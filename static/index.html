@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Students Database CRUD</title>
+<style>
+  :root { --blue:#0b8fd6; --dark:#0f1720; --bg:#f3f6fa; --card:#fff; --red:#d9363e; --green:#1f9d55; --line:#e1e7ef; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--dark); }
+  header { background:var(--dark); color:#fff; padding:18px 28px; border-bottom:4px solid var(--blue); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  header h1 { margin:0; font-size:1.3rem; }
+  header a { color:#8fd3ff; text-decoration:none; font-size:.9rem; }
+  main { max-width:1180px; margin:20px auto; padding:0 16px; display:grid; gap:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .card h2 { margin:0 0 12px; font-size:1.05rem; color:var(--blue); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+  label { font-size:.8rem; font-weight:600; display:block; margin-bottom:4px; }
+  input { width:100%; padding:9px 10px; border:1px solid #c9d3e0; border-radius:6px; font-size:.92rem; }
+  input:focus { outline:2px solid var(--blue); border-color:transparent; }
+  button { padding:9px 16px; border:0; border-radius:6px; font-size:.9rem; font-weight:600; cursor:pointer; color:#fff; background:var(--blue); }
+  button.secondary { background:#6b7a8c; }
+  button.danger { background:var(--red); }
+  button.small { padding:5px 10px; font-size:.8rem; }
+  .row { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  th { text-align:left; background:var(--dark); color:#fff; padding:10px; white-space:nowrap; }
+  td { padding:9px 10px; border-bottom:1px solid var(--line); }
+  tr:nth-child(even) td { background:#f0f8fd; }
+  .empty { text-align:center; padding:24px; color:#6b7a8c; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:.75rem; background:#e0f2fd; color:#075c8c; font-weight:600; }
+  #toast { position:fixed; right:18px; bottom:18px; padding:12px 18px; border-radius:8px; color:#fff; font-weight:600; display:none; max-width:420px; z-index:10; }
+  #toast.ok { background:var(--green); } #toast.err { background:var(--red); }
+  #aiAnswer { margin-top:12px; padding:12px; background:#f0f8fd; border-left:4px solid var(--blue); border-radius:6px; display:none; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎓 Students Database &mdash; CRUD Application</h1>
+  <a href="/docs" target="_blank">Open API docs (Swagger) →</a>
+</header>
+
+<main>
+  <!-- CREATE / UPDATE FORM -->
+  <section class="card">
+    <h2 id="formTitle">Add a new student</h2>
+    <form id="studentForm" autocomplete="off">
+      <input type="hidden" id="studentId">
+      <div class="grid">
+        <div><label for="name">Name *</label><input id="name" required minlength="2" maxlength="100"></div>
+        <div><label for="dob">Date of birth *</label><input id="dob" type="date" required></div>
+        <div><label for="email">Email</label><input id="email" type="email" placeholder="name@example.com"></div>
+        <div><label for="phone">Phone</label><input id="phone" placeholder="+91 90000 00000"></div>
+        <div><label for="course">Course</label><input id="course"></div>
+        <div><label for="address">Address</label><input id="address"></div>
+        <div><label for="enrolled">Enrollment date</label><input id="enrolled" type="date"></div>
+      </div>
+      <small>* required. Provide at least one contact (email or phone). Use dummy data only.</small>
+      <div class="row">
+        <button type="submit" id="saveBtn">Add student</button>
+        <button type="button" class="secondary" id="cancelBtn" style="display:none">Cancel edit</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- READ / FILTER -->
+  <section class="card">
+    <h2>Students <span class="badge" id="count">0</span></h2>
+    <div class="grid">
+      <div><label for="fName">Search name</label><input id="fName"></div>
+      <div><label for="fCourse">Course</label><input id="fCourse"></div>
+      <div><label for="fAfter">Born on/after</label><input id="fAfter" type="date"></div>
+      <div><label for="fBefore">Born on/before</label><input id="fBefore" type="date"></div>
+    </div>
+    <div class="row">
+      <button id="applyBtn">Apply filters</button>
+      <button class="secondary" id="resetBtn">Reset</button>
+    </div>
+    <div class="table-wrap" style="margin-top:14px">
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>DOB</th><th>Email</th><th>Phone</th><th>Course</th><th>Enrolled</th><th>Actions</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- OPTIONAL AI -->
+  <section class="card">
+    <h2>Ask about the data (optional local AI &mdash; Ollama)</h2>
+    <div class="row" style="margin-top:0">
+      <input id="question" style="flex:1;min-width:240px" placeholder='e.g. "How many students are there?" or "List students born after 2005"'>
+      <button id="askBtn">Ask</button>
+    </div>
+    <div id="aiAnswer"></div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = "";   // same origin: FastAPI serves this page
+const $ = id => document.getElementById(id);
+
+function esc(v) {  // escape HTML so stored text can never run as script (XSS safe)
+  return String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function toast(msg, ok = true) {
+  const t = $("toast");
+  t.textContent = msg; t.className = ok ? "ok" : "err"; t.style.display = "block";
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.style.display = "none", 3500);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    headers: { "Content-Type": "application/json" }, ...options
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    let msg = data.detail || res.statusText;
+    if (Array.isArray(msg)) {
+      msg = msg.map(e => {
+        const field = (e.loc || []).filter(x => x !== "body").join(".");
+        return (field ? field + ": " : "") + String(e.msg).replace("Value error, ", "");
+      }).join(" | ");
+    }
+    throw new Error(msg);
+  }
+  return { data, headers: res.headers };
+}
+
+// ---------- READ ----------
+async function loadStudents() {
+  const p = new URLSearchParams();
+  if ($("fName").value.trim()) p.set("name", $("fName").value.trim());
+  if ($("fCourse").value.trim()) p.set("course", $("fCourse").value.trim());
+  if ($("fAfter").value) p.set("born_after", $("fAfter").value);
+  if ($("fBefore").value) p.set("born_before", $("fBefore").value);
+  try {
+    const { data, headers } = await api("/students?" + p.toString());
+    $("count").textContent = headers.get("X-Total-Count") ?? data.length;
+    $("rows").innerHTML = data.length ? data.map(s => `
+      <tr>
+        <td>${s.id}</td><td>${esc(s.name)}</td><td>${esc(s.date_of_birth)}</td>
+        <td>${esc(s.email)}</td><td>${esc(s.phone)}</td><td>${esc(s.course)}</td>
+        <td>${esc(s.enrollment_date)}</td>
+        <td>
+          <button class="small" onclick="editStudent(${s.id})">Edit</button>
+          <button class="small danger" onclick="deleteStudent(${s.id}, '${esc(s.name).replace(/'/g, "")}')">Delete</button>
+        </td>
+      </tr>`).join("") : `<tr><td colspan="8" class="empty">No students found.</td></tr>`;
+  } catch (e) { toast(e.message, false); }
+}
+
+// ---------- CREATE + UPDATE ----------
+function formData() {
+  const v = id => $(id).value.trim() || null;
+  return {
+    name: $("name").value.trim(), date_of_birth: $("dob").value,
+    email: v("email"), phone: v("phone"), course: v("course"),
+    address: v("address"), enrollment_date: v("enrolled")
+  };
+}
+
+$("studentForm").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const id = $("studentId").value;
+  try {
+    await api(id ? `/students/${id}` : "/students", {
+      method: id ? "PUT" : "POST", body: JSON.stringify(formData())
+    });
+    toast(id ? "Student updated" : "Student added");
+    resetForm(); loadStudents();
+  } catch (e) { toast(e.message, false); }
+});
+
+async function editStudent(id) {
+  try {
+    const { data: s } = await api(`/students/${id}`);
+    $("studentId").value = s.id; $("name").value = s.name; $("dob").value = s.date_of_birth;
+    $("email").value = s.email ?? ""; $("phone").value = s.phone ?? "";
+    $("course").value = s.course ?? ""; $("address").value = s.address ?? "";
+    $("enrolled").value = s.enrollment_date ?? "";
+    $("formTitle").textContent = `Edit student #${s.id}`;
+    $("saveBtn").textContent = "Save changes"; $("cancelBtn").style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (e) { toast(e.message, false); }
+}
+
+function resetForm() {
+  $("studentForm").reset(); $("studentId").value = "";
+  $("formTitle").textContent = "Add a new student";
+  $("saveBtn").textContent = "Add student"; $("cancelBtn").style.display = "none";
+}
+$("cancelBtn").addEventListener("click", resetForm);
+
+// ---------- DELETE ----------
+async function deleteStudent(id, name) {
+  if (!confirm(`Delete student #${id} (${name})? This cannot be undone.`)) return;
+  try {
+    const { data } = await api(`/students/${id}`, { method: "DELETE" });
+    toast(data.message); loadStudents();
+  } catch (e) { toast(e.message, false); }
+}
+
+// ---------- filters ----------
+$("applyBtn").addEventListener("click", loadStudents);
+$("resetBtn").addEventListener("click", () => {
+  ["fName", "fCourse", "fAfter", "fBefore"].forEach(i => $(i).value = ""); loadStudents();
+});
+["fName", "fCourse"].forEach(i => $(i).addEventListener("keydown", e => { if (e.key === "Enter") loadStudents(); }));
+
+// ---------- optional AI ----------
+async function ask() {
+  const q = $("question").value.trim();
+  if (q.length < 3) return toast("Type a question first", false);
+  const box = $("aiAnswer");
+  box.style.display = "block"; box.textContent = "Thinking…";
+  try {
+    const { data } = await api("/ai/ask", { method: "POST", body: JSON.stringify({ question: q }) });
+    box.textContent = `${data.answer}\n\n[source: ${data.source}${data.model ? " / " + data.model : ""} · records used: ${data.records_used.length}]`;
+  } catch (e) { box.textContent = "Error: " + e.message; }
+}
+$("askBtn").addEventListener("click", ask);
+$("question").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+
+loadStudents();
+</script>
+</body>
+</html>
